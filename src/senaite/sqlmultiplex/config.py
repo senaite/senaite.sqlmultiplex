@@ -108,8 +108,9 @@ NON_SUPPORTED_FIELD_NAMES = [
     "allowedRolesAndUsers",
     "allowDiscussion",
     "contributor",
+    "contributors",
     "creators",
-    "effectiveDate"
+    "effectiveDate",
     "expirationDate",
     "language",
     "location",
