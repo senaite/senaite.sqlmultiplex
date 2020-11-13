@@ -93,7 +93,7 @@ class CatalogMultiplexProcessor(object):
         logger.info("Multiplexer::Indexing {}".format(repr(obj)))
 
         # Insert the object to the SQL db
-        operation, params = self.get_insert_operation(obj, attributes)
+        operation, params = self.get_insert_update(obj, attributes)
         try:
             self.execute(operation, params)
         except mysql.connector.Error as err:
@@ -108,9 +108,7 @@ class CatalogMultiplexProcessor(object):
 
     @check_installed
     def reindex(self, obj, attributes=None, update_metadata=1):
-        # TODO Update the object from the SQL db?
         self.index(obj, attributes=attributes)
-        pass
 
     @check_installed
     def unindex(self, obj):
@@ -178,23 +176,22 @@ class CatalogMultiplexProcessor(object):
         cols = ", ".join(map(to_column, attributes))
         return base.format(portal_type, cols)
 
-    def get_insert_operation(self, obj, attributes):
-        """Returns a tuple of two values: SQL insert operation, and operation
-        parameters values. The name of the SQL table is the portal type.
-        Attributes represent both obj functions/attributes and SQL columns.
+    def get_insert_update(self, obj, attributes):
+        """Returns a tuple of two values: SQL insert-update operation, and
+        operation parameters values. The name of the SQL table is the portal
+        type. Attributes represent both obj functions/attributes and SQL columns
         :param obj: the object to insert
         :param attributes: attributes/columns from the object to be inserted
         """
-        # TODO Use supermodel instead (this is wonky because depends on request)
         record = self.get_info(obj, attributes)
         portal_type = api.get_portal_type(obj)
 
-        # Build the base insert thingy
-        insert = ("INSERT INTO {} ({}) VALUES ({})".format(
-            portal_type,
-            ", ".join(attributes),
-            ", ".join(["%s"]*len(attributes)))
-        )
+        # Build the base insert/update thingy
+        update_values = map(lambda v: "{}=VALUES({})".format(v, v), attributes)
+        insert = "INSERT INTO {} ({}) VALUES ({}) ON DUPLICATE KEY UPDATE {}"\
+            .format(portal_type, ", ".join(attributes),
+                    ", ".join(["%s"]*len(attributes)),
+                    ", ".join(update_values))
 
         # Get the values for the columns
         data = map(lambda column: record.get(column) or "", attributes)
