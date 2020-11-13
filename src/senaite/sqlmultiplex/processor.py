@@ -116,6 +116,10 @@ class CatalogMultiplexProcessor(object):
             return
 
         # Delete the object from the SQL db
+        uid = api.get_uid(obj)
+        portal_type = api.get_portal_type(obj)
+        operation = "DELETE FROM {} WHERE UID='{}'".format(portal_type, uid)
+        self.execute(operation, raise_error=False)
 
         # Do something here
         logger.info("Multiplexer::Unindexing {}".format(repr(obj)))
