@@ -107,13 +107,18 @@ NON_SUPPORTED_FIELD_TYPES = [
 NON_SUPPORTED_FIELD_NAMES = [
     "allowedRolesAndUsers",
     "allowDiscussion",
+    "constrainTypesMode",
     "contributor",
     "contributors",
     "creators",
     "effectiveDate",
+    "excludeFromNav",
     "expirationDate",
+    "immediatelyAddableTypes",
     "language",
+    "locallyAllowedTypes",
     "location",
+    "nextPreviousEnabled",
     "rights",
     "subject",
 ]
