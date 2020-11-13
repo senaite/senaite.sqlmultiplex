@@ -8,6 +8,8 @@ from Products.CMFCore.interfaces import IPortalCatalogQueueProcessor
 from senaite.app.supermodel.model import SuperModel
 from senaite.sqlmultiplex import check_installed
 from senaite.sqlmultiplex import logger
+from senaite.sqlmultiplex.config import NON_SUPPORTED_FIELD_NAMES
+from senaite.sqlmultiplex.config import NON_SUPPORTED_FIELD_TYPES
 from zope.interface import implementer
 
 
@@ -47,9 +49,24 @@ class CatalogMultiplexProcessor(object):
         if portal_type not in self.get_multiplexed_types():
             return []
 
-        # TODO Better to allow user to define the fields to keep
-        attrs = SuperModel(obj).keys()
-        if attrs and "UID" not in attrs:
+        def is_field_supported(field):
+            if field.getName() in NON_SUPPORTED_FIELD_NAMES:
+                return False
+            if field.type in NON_SUPPORTED_FIELD_TYPES:
+                return False
+            return True
+
+        # Grab only attributes that make sense!
+        fields = api.get_fields(obj).values()
+        fields = filter(is_field_supported, fields)
+
+        # Get the ids of the fields to store
+        attrs = map(lambda f: f.getName(), fields)
+        if not attrs:
+            return []
+
+        # Always keep the UID
+        if "UID" not in attrs:
             attrs.append("UID")
         return attrs
 
@@ -63,10 +80,8 @@ class CatalogMultiplexProcessor(object):
         if not self.supports_multiplex(obj):
             return
 
-        if not attributes:
-            # Get the default columns for this obj
-            attributes = self.get_default_attributes(obj)
-
+        # Always insert/update all attributes
+        attributes = self.get_default_attributes(obj)
         if not attributes:
             logger.debug("SKIP. No attributes set for {}".format(repr(obj)))
             return

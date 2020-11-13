@@ -94,3 +94,25 @@ NON_SUPPORTED_TYPES = [
     "WorksheetFolder",
     "WorksheetTemplates",
 ]
+
+# List of non supported fields
+NON_SUPPORTED_FIELD_TYPES = [
+    "file",
+    "reference",
+    "remarks",
+    "uidreference",
+    "specifications",
+]
+
+NON_SUPPORTED_FIELD_NAMES = [
+    "allowedRolesAndUsers",
+    "allowDiscussion",
+    "contributor",
+    "creators",
+    "effectiveDate"
+    "expirationDate",
+    "language",
+    "location",
+    "rights"
+    "subject",
+]
