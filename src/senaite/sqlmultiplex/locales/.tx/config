@@ -1,0 +1,9 @@
+[main]
+host = https://www.transifex.com
+
+[senaite-sqlmultiplex.senaite]
+file_filter = <lang>/LC_MESSAGES/senaite.sqlmultiplex.po
+host = https://www.transifex.com
+source_file = senaite.sqlmultiplex.pot
+source_lang = en
+type = PO

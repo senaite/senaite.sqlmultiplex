@@ -1,0 +1,59 @@
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:browser="http://namespaces.zope.org/browser"
+    xmlns:five="http://namespaces.zope.org/five"
+    xmlns:genericsetup="http://namespaces.zope.org/genericsetup"
+    xmlns:i18n="http://namespaces.zope.org/i18n"
+    i18n_domain="senaite.sqlmultiplex">
+
+  <five:registerPackage package="." initialize=".initialize"/>
+
+  <!-- Register Translations -->
+  <i18n:registerTranslations directory="locales" />
+
+  <!-- Add manage permissions -->
+  <include package="bika.lims" file="permissions.zcml" />
+
+  <!-- SQL Multiplex utility -->
+  <utility
+    factory=".processor.CatalogMultiplexProcessor"
+    provides="Products.CMFCore.interfaces.IPortalCatalogQueueProcessor"
+    name="senaite.sqlmultiplex" />
+
+  <!-- SQL Multiplex Control panel -->
+  <browser:page
+    name="sql-multiplex-controlpanel"
+    for="Products.CMFPlone.interfaces.IPloneSiteRoot"
+    class=".controlpanel.SQLMultiplexControlPanel"
+    permission="senaite.core.permissions.ManageBika"
+    layer="senaite.sqlmultiplex.interfaces.ISQLMultiplexLayer" />
+
+  <!-- Default profile -->
+  <genericsetup:registerProfile
+      name="default"
+      title="SENAITE SQL MULTIPLEX"
+      directory="profiles/default"
+      description="SQL Multiplexer for SENAITE"
+      pre_handler="senaite.sqlmultiplex.setuphandlers.pre_install"
+      post_handler="senaite.sqlmultiplex.setuphandlers.post_install"
+      provides="Products.GenericSetup.interfaces.EXTENSION" />
+
+  <!-- Generic Setup Handler -->
+  <genericsetup:importStep
+      name="senaite.sqlmultiplex.setuphandler"
+      title="SENAITE.SQLMULTIPLEX Setup Handler"
+      description="Run various configuration actions"
+      handler="senaite.sqlmultiplex.setuphandlers.setup_handler"/>
+
+  <!-- Uninstall profile -->
+  <genericsetup:registerProfile
+      name="uninstall"
+      title="SENAITE SQLMULTIPLEX (uninstall)"
+      directory="profiles/uninstall"
+      description="SQL Multiplexer for SENAITE"
+      post_handler="senaite.sqlmultiplex.setuphandlers.post_uninstall"
+      provides="Products.GenericSetup.interfaces.EXTENSION" />
+
+
+
+</configure>

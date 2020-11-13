@@ -1,0 +1,9 @@
+include LICENSE
+include *.rst
+include *.md
+exclude MANIFEST.in
+recursive-exclude static *
+recursive-exclude docs *
+recursive-include src/senaite/sqlmultiplex *
+recursive-exclude src/senaite/sqlmultiplex *.pyc
+recursive-exclude src/senaite/sqlmultiplex/locales/.tx *

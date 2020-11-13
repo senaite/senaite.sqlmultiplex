@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<layers>
+  <layer name="senaite.sqlmultiplex"
+         interface="senaite.sqlmultiplex.interfaces.ISQLMultiplexLayer"
+         remove="true" />
+</layers>
