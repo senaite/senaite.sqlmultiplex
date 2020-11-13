@@ -26,10 +26,15 @@ def is_installed():
     return ISQLMultiplexLayer.providedBy(request)
 
 
-def check_installed(func):
-    """Decorator that executes the function only if the product is installed
+def check_enabled(func):
+    """Decorator that executes the function only if the product is both
+    installed and enabled
     """
     def wrapper(*args, **kwargs):
         if is_installed():
-            return func(*args, **kwargs)
+            # Check if enabled
+            from bika.lims import api
+            reg_id = "senaite.sqlmultiplex.enabled"
+            if api.get_registry_record(reg_id) is True:
+                return func(*args, **kwargs)
     return wrapper

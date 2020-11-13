@@ -6,7 +6,7 @@ from bika.lims import api
 from mysql.connector import errorcode
 from Products.CMFCore.interfaces import IPortalCatalogQueueProcessor
 from senaite.app.supermodel.model import SuperModel
-from senaite.sqlmultiplex import check_installed
+from senaite.sqlmultiplex import check_enabled
 from senaite.sqlmultiplex import logger
 from senaite.sqlmultiplex.config import NON_SUPPORTED_FIELD_NAMES
 from senaite.sqlmultiplex.config import NON_SUPPORTED_FIELD_TYPES
@@ -73,9 +73,9 @@ class CatalogMultiplexProcessor(object):
     def supports_multiplex(self, obj):
         """Returns whether the obj supports multiplex
         """
-        return len(self.get_default_attributes(obj)) > 0
+        return api.get_portal_type(obj) in self.get_multiplexed_types()
 
-    @check_installed
+    @check_enabled
     def index(self, obj, attributes=None):
         if not self.supports_multiplex(obj):
             return
@@ -102,11 +102,10 @@ class CatalogMultiplexProcessor(object):
                 except:
                     return
 
-    @check_installed
     def reindex(self, obj, attributes=None, update_metadata=1):
         self.index(obj, attributes=attributes)
 
-    @check_installed
+    @check_enabled
     def unindex(self, obj):
         if not self.supports_multiplex(obj):
             return

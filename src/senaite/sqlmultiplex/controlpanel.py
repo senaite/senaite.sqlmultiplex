@@ -5,12 +5,17 @@ from plone.z3cform import layout
 from senaite.sqlmultiplex import messageFactory as _
 from zope import schema
 from zope.interface import Interface
-from z3c.form.browser.checkbox import CheckBoxFieldWidget
 
 
 class ISQLMultiplexControlPanel(Interface):
     """Control panel Settings
     """
+
+    enabled = schema.Bool(
+        title=_(u"Enabled"),
+        default=False,
+        required=False,
+    )
 
     host = schema.TextLine(
         title=_(u"Server"),
