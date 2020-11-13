@@ -113,6 +113,6 @@ NON_SUPPORTED_FIELD_NAMES = [
     "expirationDate",
     "language",
     "location",
-    "rights"
+    "rights",
     "subject",
 ]

@@ -189,10 +189,11 @@ class CatalogMultiplexProcessor(object):
         portal_type = api.get_portal_type(obj)
 
         # Build the base insert/update thingy
-        update_values = map(lambda v: "{}=VALUES({})".format(v, v), attributes)
+        attrs = map(lambda a: "`{}`".format(a), attributes)
+        update_values = map(lambda v: "{}=VALUES({})".format(v, v), attrs)
         insert = "INSERT INTO {} ({}) VALUES ({}) ON DUPLICATE KEY UPDATE {}"\
-            .format(portal_type, ", ".join(attributes),
-                    ", ".join(["%s"]*len(attributes)),
+            .format(portal_type, ", ".join(attrs),
+                    ", ".join(["%s"]*len(attrs)),
                     ", ".join(update_values))
 
         # Get the values for the columns
