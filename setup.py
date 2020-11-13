@@ -29,14 +29,11 @@ setup(
     include_package_data=True,
     zip_safe=False,
     install_requires=[
-        "setuptools",
         "senaite.lims>=2.0.0rc1",
-        "archetypes.schemaextender",
+        "mysql-connector-python",
     ],
     extras_require={
         "test": [
-            "Products.PloneTestCase",
-            "Products.SecureMailHost",
             "plone.app.testing",
             "unittest2",
         ]
