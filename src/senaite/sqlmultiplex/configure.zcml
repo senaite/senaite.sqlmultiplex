@@ -20,6 +20,11 @@
     provides="Products.CMFCore.interfaces.IPortalCatalogQueueProcessor"
     name="senaite.sqlmultiplex" />
 
+  <!-- SQL Multiplex Vocabularies -->
+  <utility
+      component="senaite.sqlmultiplex.vocabularies.PortalTypesVocabularyFactory"
+      name="senaite.sqlmultiplex.vocabularies.portal_types" />
+
   <!-- SQL Multiplex Control panel -->
   <browser:page
     name="sql-multiplex-controlpanel"

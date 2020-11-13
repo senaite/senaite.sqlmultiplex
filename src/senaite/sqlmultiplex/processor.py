@@ -10,33 +10,6 @@ from senaite.sqlmultiplex import check_installed
 from senaite.sqlmultiplex import logger
 from zope.interface import implementer
 
-# TODO Get this dynamically instead
-TYPES_TO_MULTIPLEX = (
-    ("AnalysisRequest", [
-        "ClientSampleID",
-        "ContactEmail",
-        "ContactFullName",
-        "ContactUsername",
-        "CreatorFullName",
-        "DateOfBirth",
-        "DateSampled",
-        "DateReceived",
-        "DatePublished",
-        "Gender",
-        "Priority",
-        "ProfilesTitleStr",
-        "SampleTypeTitle",
-        "TemplateTitle",
-        "created",
-        "creation_date",
-        "id",
-        "modified",
-        "parent_id",
-        "path",
-        "title"
-    ]),
-)
-
 
 @implementer(IPortalCatalogQueueProcessor)
 class CatalogMultiplexProcessor(object):
@@ -60,14 +33,22 @@ class CatalogMultiplexProcessor(object):
             config.update({param: api.get_registry_record(reg_id)})
         return config
 
+    def get_multiplexed_types(self):
+        """Returns the list of portal types to be multiplexed
+        """
+        reg_id = "senaite.sqlmultiplex.content_types"
+        return api.get_registry_record(reg_id, [])
+
     def get_default_attributes(self, obj):
         """Returns the default attributes from the object to keep mapped
         against the SQL database
         """
         portal_type = api.get_portal_type(obj)
-        # TODO Get this from somewhere instead of a const
-        attrs = dict(TYPES_TO_MULTIPLEX).get(portal_type, [])
-        # Always inject the UID
+        if portal_type not in self.get_multiplexed_types():
+            return []
+
+        # TODO Better to allow user to define the fields to keep
+        attrs = SuperModel(obj).keys()
         if attrs and "UID" not in attrs:
             attrs.append("UID")
         return attrs
@@ -178,7 +159,9 @@ class CatalogMultiplexProcessor(object):
         base = "CREATE TABLE `{}` ({}, PRIMARY KEY (`UID`)) ENGINE=InnoDB " \
                "DEFAULT CHARSET=utf8mb4"
         cols = ", ".join(map(to_column, attributes))
-        return base.format(portal_type, cols)
+        operation = base.format(portal_type, cols)
+        logger.info(operation)
+        return operation
 
     def get_insert_update(self, obj, attributes):
         """Returns a tuple of two values: SQL insert-update operation, and
@@ -219,7 +202,7 @@ class CatalogMultiplexProcessor(object):
         for k in info.keys():
             v = info.get(k)
             if isinstance(v, (list, tuple, dict)):
-                info.update({v: json.dumps(v)})
+                info.update({k: json.dumps(v)})
 
         return info
 

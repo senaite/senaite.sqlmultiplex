@@ -5,6 +5,7 @@ from plone.z3cform import layout
 from senaite.sqlmultiplex import messageFactory as _
 from zope import schema
 from zope.interface import Interface
+from z3c.form.browser.checkbox import CheckBoxFieldWidget
 
 
 class ISQLMultiplexControlPanel(Interface):
@@ -41,6 +42,14 @@ class ISQLMultiplexControlPanel(Interface):
         title=_(u"Database user password"),
         default=u"",
         required=False,
+    )
+
+    content_types = schema.List(
+        title=_(u"Tables"),
+        required=False,
+        value_type=schema.Choice(
+            source="senaite.sqlmultiplex.vocabularies.portal_types"
+        )
     )
 
 
