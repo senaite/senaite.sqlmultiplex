@@ -20,6 +20,8 @@ SQL Multiplexer for SENAITE
 About
 -----
 
+**NOT READY FOR PRODUCTION**
+
 SENAITE.SQLMULTIPLEX adds **SQL-Multiplex** to `SENAITE LIMS <https://www.senaite.com>`_.
 
 
