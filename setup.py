@@ -30,7 +30,9 @@ setup(
     zip_safe=False,
     install_requires=[
         "senaite.lims>=2.0.0rc1",
-        "mysql-connector-python",
+        # mysql-connector-python >= 8.0.24 does not support Python 2.x anymore
+        # https://dev.mysql.com/doc/relnotes/connector-python/en/news-8-0-24.html
+        "mysql-connector-python<8.0.24",
     ],
     extras_require={
         "test": [
