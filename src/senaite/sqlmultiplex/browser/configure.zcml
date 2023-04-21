@@ -1,0 +1,12 @@
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:browser="http://namespaces.zope.org/browser"
+    i18n_domain="senaite.sqlmultiplex">
+
+  <!-- Static resource directory -->
+  <browser:resourceDirectory
+      name="senaite.sqlmultiplex.static"
+      directory="static"
+      layer="senaite.sqlmultiplex.interfaces.ISQLMultiplexLayer" />
+
+</configure>

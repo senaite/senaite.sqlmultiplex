@@ -27,7 +27,7 @@ class ISQLMultiplexControlPanel(Interface):
         title=_(u"Port"),
         min=0,
         max=65535,
-        default=3306,
+        default=5432,
         required=False,
     )
 

@@ -14,10 +14,14 @@
   <!-- Add manage permissions -->
   <include package="bika.lims" file="permissions.zcml" />
 
+  <!-- Package includes -->
+  <include package=".browser"/>
+
   <!-- SQL Multiplex utility -->
+  <include package="collective.indexing" />
   <utility
     factory=".processor.CatalogMultiplexProcessor"
-    provides="Products.CMFCore.interfaces.IPortalCatalogQueueProcessor"
+    provides="collective.indexing.indexer.IPortalCatalogQueueProcessor"
     name="senaite.sqlmultiplex" />
 
   <!-- SQL Multiplex Vocabularies -->

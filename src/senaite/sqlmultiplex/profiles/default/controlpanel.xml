@@ -14,7 +14,7 @@
       appId="senaite.sqlmultiplex"
       category="Products"
       condition_expr=""
-      icon_expr="string:senaite_theme/icon/sql-multiplex"
+      icon_expr="string:++resource++senaite.sqlmultiplex.static/icon.png"
       url_expr="string:${portal_url}/@@sql-multiplex-controlpanel"
       visible="True"
       i18n:domain="senaite.sqlmultiplex"

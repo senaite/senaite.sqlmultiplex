@@ -29,10 +29,16 @@ setup(
     include_package_data=True,
     zip_safe=False,
     install_requires=[
-        "senaite.lims>=2.0.0rc1",
+        "senaite.lims>=1.3.5",
+        "senaite.lims<2.0.0",
         # mysql-connector-python >= 8.0.24 does not support Python 2.x anymore
         # https://dev.mysql.com/doc/relnotes/connector-python/en/news-8-0-24.html
         "mysql-connector-python<8.0.24",
+        # protobuf >= 3.18 does not support Python 2.7 anymore
+        # https://groups.google.com/g/protobuf/c/A2p2IgHPIZc
+        # https://github.com/protocolbuffers/protobuf/releases/tag/v3.17.3
+        "protobuf==3.17.3",
+        "collective.indexing",
     ],
     extras_require={
         "test": [
