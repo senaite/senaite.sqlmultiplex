@@ -9,33 +9,41 @@
   <five:registerPackage package="." initialize=".initialize"/>
 
   <!-- Register Translations -->
-  <i18n:registerTranslations directory="locales" />
+  <i18n:registerTranslations directory="locales"/>
 
   <!-- Add manage permissions -->
-  <include package="bika.lims" file="permissions.zcml" />
+  <include package="bika.lims" file="permissions.zcml"/>
 
   <!-- Package includes -->
   <include package=".browser"/>
 
-  <!-- SQL Multiplex utility -->
-  <include package="collective.indexing" />
+  <!-- SQL Multiplex utility
+  Needed for `IPortalCatalogQueueProcessor`, which will be included in
+  `Products.CMFCore` in Plone 5. Remove after we are on Plone 5!
+  TODO: Remove 2.x
+  -->
+  <include package="collective.indexing"/>
   <utility
-    factory=".processor.CatalogMultiplexProcessor"
-    provides="collective.indexing.indexer.IPortalCatalogQueueProcessor"
-    name="senaite.sqlmultiplex" />
+      factory=".processor.CatalogMultiplexProcessor"
+      provides="collective.indexing.indexer.IPortalCatalogQueueProcessor"
+      name="senaite.sqlmultiplex"/>
 
   <!-- SQL Multiplex Vocabularies -->
   <utility
       component="senaite.sqlmultiplex.vocabularies.PortalTypesVocabularyFactory"
-      name="senaite.sqlmultiplex.vocabularies.portal_types" />
+      name="senaite.sqlmultiplex.vocabularies.portal_types"/>
+
+  <utility
+      component="senaite.sqlmultiplex.vocabularies.ConnectorsVocabularyFactory"
+      name="senaite.sqlmultiplex.vocabularies.connectors"/>
 
   <!-- SQL Multiplex Control panel -->
   <browser:page
-    name="sql-multiplex-controlpanel"
-    for="Products.CMFPlone.interfaces.IPloneSiteRoot"
-    class=".controlpanel.SQLMultiplexControlPanel"
-    permission="senaite.core.permissions.ManageBika"
-    layer="senaite.sqlmultiplex.interfaces.ISQLMultiplexLayer" />
+      name="sql-multiplex-controlpanel"
+      for="Products.CMFPlone.interfaces.IPloneSiteRoot"
+      class=".controlpanel.SQLMultiplexControlPanel"
+      permission="senaite.core.permissions.ManageBika"
+      layer="senaite.sqlmultiplex.interfaces.ISQLMultiplexLayer"/>
 
   <!-- Default profile -->
   <genericsetup:registerProfile
@@ -45,7 +53,7 @@
       description="SQL Multiplexer for SENAITE"
       pre_handler="senaite.sqlmultiplex.setuphandlers.pre_install"
       post_handler="senaite.sqlmultiplex.setuphandlers.post_install"
-      provides="Products.GenericSetup.interfaces.EXTENSION" />
+      provides="Products.GenericSetup.interfaces.EXTENSION"/>
 
   <!-- Generic Setup Handler -->
   <genericsetup:importStep
@@ -61,8 +69,6 @@
       directory="profiles/uninstall"
       description="SQL Multiplexer for SENAITE"
       post_handler="senaite.sqlmultiplex.setuphandlers.post_uninstall"
-      provides="Products.GenericSetup.interfaces.EXTENSION" />
-
-
+      provides="Products.GenericSetup.interfaces.EXTENSION"/>
 
 </configure>

@@ -17,6 +17,13 @@ class ISQLMultiplexControlPanel(Interface):
         required=False,
     )
 
+    db_type = schema.Choice(
+        title=_(u"Connector"),
+        required=False,
+        default="PostgreSQL",
+        vocabulary="senaite.sqlmultiplex.vocabularies.connectors",
+    )
+
     host = schema.TextLine(
         title=_(u"Server"),
         default=u"localhost",
@@ -47,6 +54,16 @@ class ISQLMultiplexControlPanel(Interface):
         title=_(u"Database user password"),
         default=u"",
         required=False,
+    )
+
+    raise_errors = schema.Bool(
+        title=_(u"Raise errors"),
+        description=_(
+            u"If selected, a traceback will occur and transaction aborted on "
+            u"SQL multiplex errors instead of failing silently. Errors are "
+            u"always displayed in the log regardless of this setting"
+        ),
+        default=True,
     )
 
     content_types = schema.List(

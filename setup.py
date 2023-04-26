@@ -33,12 +33,17 @@ setup(
         "senaite.lims<2.0.0",
         # mysql-connector-python >= 8.0.24 does not support Python 2.x anymore
         # https://dev.mysql.com/doc/relnotes/connector-python/en/news-8-0-24.html
-        "mysql-connector-python<8.0.24",
+        "mysql-connector-python==8.0.23",
         # protobuf >= 3.18 does not support Python 2.7 anymore
         # https://groups.google.com/g/protobuf/c/A2p2IgHPIZc
         # https://github.com/protocolbuffers/protobuf/releases/tag/v3.17.3
         "protobuf==3.17.3",
+        # Needed for `IPortalCatalogQueueProcessor`, which will be included in
+        # `Products.CMFCore` in Plone 5. Remove after we are on Plone 5!
         "collective.indexing",
+        # psycopg2 >= 2.9 does not support Python 2.7 anymore
+        # https://github.com/psycopg/psycopg2/releases/tag/2_9
+        "psycopg2==2.8.6"
     ],
     extras_require={
         "test": [

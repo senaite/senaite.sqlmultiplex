@@ -1,3 +1,7 @@
+CONNECTORS = [
+    "MySQL",
+    "PostgreSQL",
+]
 
 # Types not supported, not displayed in Multiplexer settings for selection
 NON_SUPPORTED_TYPES = [
@@ -34,6 +38,7 @@ NON_SUPPORTED_TYPES = [
     "CaseStatuses",
     "CaseSyndromicClassifications",
     "ClientFolder",
+    "Collection",
     "ContainerTypes",
     "Containers",
     "DataBox",
@@ -62,6 +67,7 @@ NON_SUPPORTED_TYPES = [
     "Laboratory",
     "Link",
     "Manufacturers",
+    "Multifile",
     "Methods",
     "News Item",
     "Patients",
@@ -73,8 +79,10 @@ NON_SUPPORTED_TYPES = [
     "ReflexRuleFolder",
     "RejectAnalysis",
     "ReportFolder",
+    "Sample",
     "SampleConditions",
     "SampleMatrices",
+    "SamplePartition",
     "SamplePoints",
     "SampleTypes",
     "SamplingDeviations",
@@ -98,9 +106,8 @@ NON_SUPPORTED_TYPES = [
 # List of non supported fields
 NON_SUPPORTED_FIELD_TYPES = [
     "file",
-    "reference",
+    "computed",
     "remarks",
-    "uidreference",
     "specifications",
 ]
 
@@ -122,3 +129,27 @@ NON_SUPPORTED_FIELD_NAMES = [
     "rights",
     "subject",
 ]
+
+NON_SUPPORTED_FIELDS_BY_PORTAL_TYPE = (
+    ("AnalysisRequest", [
+        "Attachment",
+        "_ARAttachment",
+        "Invoice",
+        "Analyses",
+    ]),
+    ("Batch", [
+        "BatchID",
+    ]),
+)
+
+OTHER_FIELDS = (
+    ("Analysis", [
+        "FormattedResult",
+    ]),
+)
+
+CUSTOM_TYPES = (
+    ("Analysis", {
+        "Result": "text",
+    }),
+)
