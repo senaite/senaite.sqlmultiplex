@@ -24,6 +24,15 @@ About
 
 SENAITE.SQLMULTIPLEX adds **SQL-Multiplex** to `SENAITE LIMS <https://www.senaite.com>`_.
 
+Prerequisites
+-------------
+
+Install the official client libraries for PostgreSQL and MySQL:
+
+.. code-block:: shell
+
+    $ sudo apt install libpq-dev postgresql-client default-mysql-client
+
 
 Feedback and support
 --------------------
