@@ -1,7 +1,27 @@
+# -*- coding: utf-8 -*-
+#
+# This file is part of SENAITE.SQLMULTIPLEX.
+#
+# SENAITE.SQLMULTIPLEX is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by the Free
+# Software Foundation, version 2.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+# details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51
+# Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+# Copyright 2020-2026 by it's authors.
+# Some rights reserved, see README and LICENSE.
 
 import logging
 
-from .interfaces import ISQLMultiplexLayer
+from bika.lims import api
+from senaite.sqlmultiplex.interfaces import ISQLMultiplexLayer
 from zope.i18nmessageid import MessageFactory
 
 PRODUCT_NAME = "senaite.sqlmultiplex"
@@ -21,20 +41,5 @@ def initialize(context):
 def is_installed():
     """Returns whether the product is installed or not
     """
-    from bika.lims import api
     request = api.get_request()
     return ISQLMultiplexLayer.providedBy(request)
-
-
-def check_enabled(func):
-    """Decorator that executes the function only if the product is both
-    installed and enabled
-    """
-    def wrapper(*args, **kwargs):
-        if is_installed():
-            # Check if enabled
-            from bika.lims import api
-            reg_id = "senaite.sqlmultiplex.enabled"
-            if api.get_registry_record(reg_id) is True:
-                return func(*args, **kwargs)
-    return wrapper

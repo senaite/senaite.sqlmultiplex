@@ -14,16 +14,17 @@
   <!-- Add manage permissions -->
   <include package="bika.lims" file="permissions.zcml" />
 
-  <!-- SQL Multiplex utility -->
+  <!-- SQL Multiplex queue processor -->
   <utility
-    factory=".processor.CatalogMultiplexProcessor"
+    factory=".processor.SQLMultiplexProcessor"
     provides="Products.CMFCore.interfaces.IPortalCatalogQueueProcessor"
     name="senaite.sqlmultiplex" />
 
-  <!-- SQL Multiplex Vocabularies -->
+  <!-- PostgreSQL connector -->
   <utility
-      component="senaite.sqlmultiplex.vocabularies.PortalTypesVocabularyFactory"
-      name="senaite.sqlmultiplex.vocabularies.portal_types" />
+    factory=".connector.PostgreSQLConnector"
+    provides=".interfaces.ISQLConnector"
+    name="postgresql" />
 
   <!-- SQL Multiplex Control panel -->
   <browser:page
@@ -58,7 +59,4 @@
       description="SQL Multiplexer for SENAITE"
       post_handler="senaite.sqlmultiplex.setuphandlers.post_uninstall"
       provides="Products.GenericSetup.interfaces.EXTENSION" />
-
-
-
 </configure>

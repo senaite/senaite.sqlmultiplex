@@ -20,9 +20,113 @@ SQL Multiplexer for SENAITE
 About
 -----
 
-**NOT READY FOR PRODUCTION**
+SENAITE.SQLMULTIPLEX mirrors SENAITE content into a PostgreSQL database,
+e.g. for reporting with Metabase, Grafana or plain SQL.
 
-SENAITE.SQLMULTIPLEX adds **SQL-Multiplex** to `SENAITE LIMS <https://www.senaite.com>`_.
+Which objects end up in which table is decided by `ISQLRow` adapters
+provided by other add-ons. Without an adapter, nothing is mirrored.
+
+Version 2.0 is under development and not released yet.
+
+
+How it works
+------------
+
+The multiplexer is a queue processor of the portal catalog. Whenever an
+object is indexed, reindexed or unindexed, its `ISQLRow` adapters are
+looked up and their rows are written to PostgreSQL.
+
+- One connection per thread, one PostgreSQL transaction per ZODB
+  transaction. Rows are committed after the ZODB commit succeeded and
+  rolled back when it failed, so the database never holds rows of an
+  aborted transaction.
+- Tables and missing columns are created on the first write. Existing
+  columns are never changed or dropped.
+- Database errors do not break SENAITE. A rejected row is logged and
+  skipped, the other rows of the transaction are kept (one savepoint per
+  row). If the commit fails after the ZODB commit, the rows of that
+  transaction are missing in PostgreSQL and the error is logged.
+
+
+Writing a row adapter
+---------------------
+
+Subclass `senaite.sqlmultiplex.row.SQLRow`, define the table and the
+columns, and provide one getter per column::
+
+    from bika.lims import api
+    from senaite.sqlmultiplex.row import SQLRow
+
+
+    class SampleRow(SQLRow):
+        table = "sample"
+        columns = (
+            ("uid", "varchar(32)"),
+            ("sample_id", "text"),
+            ("state", "text"),
+            ("created", "timestamptz"),
+        )
+
+        def applies(self):
+            # objects that do not apply are removed from the table
+            return api.get_review_status(self.context) != "invalid"
+
+        def get_sample_id(self):
+            return api.get_id(self.context)
+
+        def get_state(self):
+            return api.get_review_status(self.context)
+
+        def get_created(self):
+            return api.get_creation_date(self.context).asdatetime()
+
+Register it for the content interface::
+
+    <adapter
+        for="bika.lims.interfaces.IAnalysisRequest"
+        factory=".rows.SampleRow"
+        name="myaddon.sample" />
+
+Several named adapters for the same object write into several tables.
+Values of `json`/`jsonb` columns may be dicts or lists.
+
+
+Configuration
+-------------
+
+Install the add-on and enable the multiplexer in the control panel
+("SQL Multiplex settings").
+
+The connection string is read from the environment variable
+`SENAITE_SQLMULTIPLEX_DSN`, e.g. in the buildout instance section::
+
+    environment-vars =
+        SENAITE_SQLMULTIPLEX_DSN host=localhost dbname=senaite user=senaite password=secret
+
+If the variable is not set, the connection string of the control panel is
+used. That one is stored in the ZODB in plain text.
+
+Each Zope thread opens one connection. Plan `max_connections` of the
+server accordingly (instances x threads, plus other clients).
+
+
+MySQL
+-----
+
+Version 1.x targeted MySQL. Version 2.0 supports PostgreSQL only. The
+connector is a named `ISQLConnector` utility, selected in the control
+panel, so a MySQL connector can be added later without changes to the
+processor or the row adapters.
+
+
+Running the tests
+-----------------
+
+The connector tests that need a database are skipped unless
+`SENAITE_SQLMULTIPLEX_TEST_DSN` points to a PostgreSQL database::
+
+    createdb sqlmultiplex_test
+    SENAITE_SQLMULTIPLEX_TEST_DSN="dbname=sqlmultiplex_test" bin/test -s senaite.sqlmultiplex
 
 
 Feedback and support
@@ -36,7 +140,7 @@ Feedback and support
 License
 -------
 
-**SENAITE.sqlmultiplex** Copyright (C) 2020 RIDING BYTES & NARALABS
+**SENAITE.sqlmultiplex** Copyright (C) 2020-2026 RIDING BYTES & NARALABS
 
 This program is free software; you can redistribute it and/or modify it under
 the terms of the `GNU General Public License version 2

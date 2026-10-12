@@ -2,7 +2,7 @@
 
 from setuptools import setup, find_packages
 
-version = "1.0.0"
+version = "2.0.0"
 
 setup(
     name="senaite.sqlmultiplex",
@@ -29,10 +29,9 @@ setup(
     include_package_data=True,
     zip_safe=False,
     install_requires=[
-        "senaite.lims>=2.0.0rc1",
-        # mysql-connector-python >= 8.0.24 does not support Python 2.x anymore
-        # https://dev.mysql.com/doc/relnotes/connector-python/en/news-8-0-24.html
-        "mysql-connector-python<8.0.24",
+        "senaite.lims>=2.5.0",
+        # psycopg2 2.9 dropped Python 2.7
+        "psycopg2<2.9",
     ],
     extras_require={
         "test": [
