@@ -20,6 +20,7 @@
 
 from bika.lims import api
 from Products.CMFCore.interfaces import IPortalCatalogQueueProcessor
+from senaite.sqlmultiplex import logger
 from senaite.sqlmultiplex.config import DEFAULT_CONNECTOR
 from senaite.sqlmultiplex.config import REGISTRY_CONNECTOR
 from senaite.sqlmultiplex.config import REGISTRY_ENABLED
@@ -57,18 +58,57 @@ def get_connector():
 
 def get_rows(obj):
     """Returns the ISQLRow adapters of the object
+
+    An adapter that fails to construct is logged, see write.
     """
     if not api.is_object(obj) or api.is_temporary(obj):
         return []
-    return [row for name, row in getAdapters((obj, ), ISQLRow)]
+    try:
+        return [row for name, row in getAdapters((obj, ), ISQLRow)]
+    except Exception:
+        logger.exception("Skipping the rows of {}".format(
+            api.get_path(obj)))
+        return []
 
 
 def write(connector, row):
     """Writes the row, or removes it if the object no longer applies
+
+    Returns False if the row could not be written.
     """
-    if row.applies():
-        return connector.upsert(row)
-    return connector.delete(row)
+    # The row adapters are code of other add-ons and read arbitrary
+    # object data. Whatever they raise must not reach SENAITE: a bug in
+    # an adapter or bad data in one object would otherwise stop the lab
+    # from saving. The values are read before the database is touched,
+    # so skipping the row leaves the transaction clean.
+    try:
+        if row.applies():
+            return connector.upsert(row)
+        return connector.delete(row)
+    except Exception:
+        logger.exception("Skipping row of {} for {}".format(
+            row.__class__.__name__, get_path(row)))
+        return False
+
+
+def delete(connector, row):
+    """Removes the row, see write for the error handling
+    """
+    try:
+        return connector.delete(row)
+    except Exception:
+        logger.exception("Skipping removal of {} for {}".format(
+            row.__class__.__name__, get_path(row)))
+        return False
+
+
+def get_path(row):
+    """Returns the path of the adapted object, for log messages
+    """
+    context = getattr(row, "context", None)
+    if context is None:
+        return repr(row)
+    return api.get_path(context)
 
 
 @implementer(IPortalCatalogQueueProcessor)
@@ -103,7 +143,7 @@ class SQLMultiplexProcessor(object):
         if connector is None:
             return
         for row in rows:
-            connector.delete(row)
+            delete(connector, row)
 
     def get_rows(self, obj):
         if not is_enabled():
