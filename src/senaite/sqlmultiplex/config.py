@@ -1,124 +1,32 @@
+# -*- coding: utf-8 -*-
+#
+# This file is part of SENAITE.SQLMULTIPLEX.
+#
+# SENAITE.SQLMULTIPLEX is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by the Free
+# Software Foundation, version 2.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+# details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51
+# Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+# Copyright 2020-2026 by it's authors.
+# Some rights reserved, see README and LICENSE.
 
-# Types not supported, not displayed in Multiplexer settings for selection
-NON_SUPPORTED_TYPES = [
-    "ARReport",
-    "ARTemplates",
-    "ATBooleanCriterion",
-    "ATCurrentAuthorCriterion",
-    "ATDateCriteria",
-    "ATDateRangeCriterion",
-    "ATListCriterion",
-    "ATPathCriterion",
-    "ATPortalTypeCriterion",
-    "ATReferenceCriterion",
-    "ATRelativePathCriterion",
-    "ATSelectionCriterion",
-    "ATSimpleIntCriterion",
-    "ATSimpleStringCriterion",
-    "ATSortCriterion",
-    "AetiologicAgents",
-    "AnalysisCategories",
-    "AnalysisProfiles",
-    "AnalysisRequestsFolder",
-    "AnalysisServices",
-    "AnalysisSpecs",
-    "Attachment",
-    "AttachmentTypes",
-    "AuditLog",
-    "AutoImportLog",
-    "BatchFolder",
-    "BatchLabels",
-    "BikaSetup",
-    "Calculations",
-    "CaseOutcomes",
-    "CaseStatuses",
-    "CaseSyndromicClassifications",
-    "ClientFolder",
-    "ContainerTypes",
-    "Containers",
-    "DataBox",
-    "DataBoxFolder",
-    "Departments",
-    "Diseases",
-    "Doctors",
-    "Document",
-    "DrugProhibitions",
-    "Drugs",
-    "DynamicAnalysisSpecs",
-    "Ethnicities",
-    "Event",
-    "File",
-    "Folder",
-    "IdentifierTypes",
-    "Image",
-    "Immunizations",
-    "InstrumentCalibration",
-    "InstrumentLocations",
-    "InstrumentTypes",
-    "Instruments",
-    "InsuranceCompanies",
-    "LabContacts",
-    "LabProducts",
-    "Laboratory",
-    "Link",
-    "Manufacturers",
-    "Methods",
-    "News Item",
-    "Patients",
-    "Plone Site",
-    "Preservations",
-    "PricelistFolder",
-    "ReferenceDefinitions",
-    "ReferenceSamplesFolder",
-    "ReflexRuleFolder",
-    "RejectAnalysis",
-    "ReportFolder",
-    "SampleConditions",
-    "SampleMatrices",
-    "SamplePoints",
-    "SampleTypes",
-    "SamplingDeviations",
-    "StorageLocations",
-    "StorageRootFolder",
-    "StorageSamplesContainer",
-    "SubGroups",
-    "SupplierContact",
-    "Suppliers",
-    "SupplyOrderFolder",
-    "Symptoms",
-    "TempFolder",
-    "Topic",
-    "Treatments",
-    "VaccinationCenterContact",
-    "VaccinationCenters",
-    "WorksheetFolder",
-    "WorksheetTemplates",
-]
+# Environment variable that holds the libpq connection string. Takes
+# precedence over the registry record, which is stored in the ZODB in
+# plain text.
+DSN_ENVIRONMENT_VARIABLE = "SENAITE_SQLMULTIPLEX_DSN"
 
-# List of non supported fields
-NON_SUPPORTED_FIELD_TYPES = [
-    "file",
-    "reference",
-    "remarks",
-    "uidreference",
-    "specifications",
-]
+# Registry records, see controlpanel.ISQLMultiplexControlPanel
+REGISTRY_ENABLED = "senaite.sqlmultiplex.enabled"
+REGISTRY_CONNECTOR = "senaite.sqlmultiplex.connector"
+REGISTRY_DSN = "senaite.sqlmultiplex.dsn"
 
-NON_SUPPORTED_FIELD_NAMES = [
-    "allowedRolesAndUsers",
-    "allowDiscussion",
-    "constrainTypesMode",
-    "contributor",
-    "contributors",
-    "creators",
-    "effectiveDate",
-    "excludeFromNav",
-    "expirationDate",
-    "immediatelyAddableTypes",
-    "language",
-    "locallyAllowedTypes",
-    "location",
-    "nextPreviousEnabled",
-    "rights",
-    "subject",
-]
+# Name of the connector utility used when none is configured
+DEFAULT_CONNECTOR = "postgresql"
