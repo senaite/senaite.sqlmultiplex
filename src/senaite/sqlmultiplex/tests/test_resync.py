@@ -24,6 +24,7 @@ stand-in
 
 import unittest
 
+from BTrees.OOBTree import OOBTree
 from senaite.sqlmultiplex import resync
 from senaite.sqlmultiplex.tests.test_processor import Connector
 from senaite.sqlmultiplex.tests.test_processor import Row
@@ -44,9 +45,10 @@ class Brain(object):
     object deleted after the query
     """
 
-    def __init__(self, uid, rows):
+    def __init__(self, uid, rows, portal_type="Analysis"):
         self.uid = uid
         self.rows = rows
+        self.portal_type = portal_type
 
     def getPath(self):
         return "/senaite/" + self.uid
@@ -105,6 +107,8 @@ class ResyncTest(unittest.TestCase):
         self.originals = {}
         self.catalog = Catalog(make_brains(5))
         self.patch("search", self.catalog.search)
+        # the catalog query path; the UID index path is tested below
+        self.patch("get_uid_tree", lambda catalog_id: None)
         self.patch("get_object", lambda brain: brain.rows)
         self.patch("get_rows", lambda obj: obj)
         self.patch("api", API())
@@ -191,6 +195,78 @@ class ResyncTest(unittest.TestCase):
         self.assertEqual((objects, rows), (5, 4))
 
 
+class UIDIndex(object):
+
+    def __init__(self, brains):
+        self._index = OOBTree(
+            dict((brain.uid, rid) for rid, brain in enumerate(brains)))
+
+
+class InnerCatalog(object):
+    """Stands in for the Catalog of a ZCatalog: record id to brain
+    """
+
+    def __init__(self, brains):
+        self.brains = brains
+        self.indexes = {"UID": UIDIndex(brains)}
+
+    def __getitem__(self, rid):
+        return self.brains[rid]
+
+
+class ZCatalog(object):
+
+    def __init__(self, brains):
+        self._catalog = InnerCatalog(brains)
+
+
+class ScanBatchTest(unittest.TestCase):
+    """Batches read from the tree of the UID index
+    """
+
+    def setUp(self):
+        self.original = resync.api
+        brains = [
+            Brain("uid03", [], "Analysis"),
+            Brain("uid01", [], "Analysis"),
+            Brain("uid02", [], "DuplicateAnalysis"),
+            Brain("uid04", [], "Analysis"),
+        ]
+        catalog = ZCatalog(brains)
+        api = API()
+        api.get_tool = lambda catalog_id: catalog
+        resync.api = api
+
+    def tearDown(self):
+        resync.api = self.original
+
+    def uids(self, query, after=None, size=10):
+        return [brain.uid for brain in resync.search_batch(
+            "catalog", query, after, size)]
+
+    def test_uid_order_and_portal_type(self):
+        self.assertEqual(self.uids({"portal_type": "Analysis"}),
+                         ["uid01", "uid03", "uid04"])
+        self.assertEqual(self.uids({}),
+                         ["uid01", "uid02", "uid03", "uid04"])
+
+    def test_after_and_size(self):
+        self.assertEqual(
+            self.uids({"portal_type": ["Analysis"]}, after="uid01", size=1),
+            ["uid03"])
+        self.assertEqual(self.uids({}, after="uid04"), [])
+
+    def test_other_queries_use_the_catalog(self):
+        calls = []
+        original = resync.search
+        resync.search = lambda catalog_id, query: calls.append(query) or []
+        try:
+            self.uids({"review_state": "published"})
+        finally:
+            resync.search = original
+        self.assertEqual(len(calls), 1)
+
+
 class ParseArgsTest(unittest.TestCase):
 
     def test_defaults(self):
@@ -222,5 +298,6 @@ class ParseArgsTest(unittest.TestCase):
 def test_suite():
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(ResyncTest))
+    suite.addTest(unittest.makeSuite(ScanBatchTest))
     suite.addTest(unittest.makeSuite(ParseArgsTest))
     return suite

@@ -112,11 +112,61 @@ def make_batch_query(query, after, size):
 
 def search_batch(catalog_id, query, after, size):
     """Returns the brains of the next batch, at most size
+
+    Queries on the portal type only are answered from the UID index
+    directly (see scan_batch). Other queries go through the catalog.
     """
+    uid_tree = get_uid_tree(catalog_id)
+    if uid_tree is not None and set(query) <= set(["portal_type"]):
+        return scan_batch(catalog_id, uid_tree, query.get("portal_type"),
+                          after, size)
     brains = search(catalog_id, make_batch_query(query, after, size))
     brains = [brain for brain in brains[:size + 1]
               if api.get_uid(brain) != after]
     return brains[:size]
+
+
+def get_uid_tree(catalog_id):
+    """Returns the tree of the UID index (UID to record id), or None
+
+    A range query "UID after X" collects and sorts every later record
+    for each batch, about half a second per batch on 365,000 objects.
+    Walking the sorted tree of the index from X on costs only the size
+    of the batch.
+    """
+    catalog = api.get_tool(catalog_id)._catalog
+    index = catalog.indexes.get("UID")
+    return getattr(index, "_index", None)
+
+
+def to_portal_types(portal_type):
+    """Returns the portal types of the query as set, empty for all
+    """
+    if not portal_type:
+        return set()
+    if isinstance(portal_type, basestring):
+        return set([portal_type])
+    return set(portal_type)
+
+
+def scan_batch(catalog_id, uid_tree, portal_type, after, size):
+    """Returns the next brains in UID order, read from the UID index
+    """
+    catalog = api.get_tool(catalog_id)._catalog
+    portal_types = to_portal_types(portal_type)
+    if after:
+        uids = uid_tree.keys(min=after, excludemin=True)
+    else:
+        uids = uid_tree.keys()
+    brains = []
+    for uid in uids:
+        brain = catalog[uid_tree[uid]]
+        if portal_types and brain.portal_type not in portal_types:
+            continue
+        brains.append(brain)
+        if len(brains) == size:
+            break
+    return brains
 
 
 def resync_batch(connector, catalog_id, query, after=None,
