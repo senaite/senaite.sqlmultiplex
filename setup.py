@@ -29,7 +29,7 @@ setup(
     include_package_data=True,
     zip_safe=False,
     install_requires=[
-        "senaite.lims>=2.5.0",
+        "senaite.lims>=2.6.0",
         # psycopg2 2.9 dropped Python 2.7
         "psycopg2<2.9",
     ],
