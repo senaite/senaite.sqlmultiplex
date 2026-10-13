@@ -18,7 +18,8 @@
 # Copyright 2020-2026 by it's authors.
 # Some rights reserved, see README and LICENSE.
 
-"""Unit tests for the resync, with a recording connector
+"""Unit tests for the resync, with a recording connector and a catalog
+stand-in
 """
 
 import unittest
@@ -38,12 +39,46 @@ class Portal(object):
     _p_jar = Jar()
 
 
+class Brain(object):
+    """A catalog brain whose object is a list of rows, or None for an
+    object deleted after the query
+    """
+
+    def __init__(self, uid, rows):
+        self.uid = uid
+        self.rows = rows
+
+    def getPath(self):
+        return "/senaite/" + self.uid
+
+
 class API(object):
     """Stands in for bika.lims.api
     """
 
     def get_portal(self):
         return Portal()
+
+    def get_uid(self, brain):
+        return brain.uid
+
+
+class Catalog(object):
+    """Answers the batch queries of the resync: sorted by UID, from the
+    given UID on (inclusive, like a range query with min)
+    """
+
+    def __init__(self, brains):
+        self.brains = brains
+        self.queries = []
+
+    def search(self, catalog_id, query):
+        self.queries.append(query)
+        brains = sorted(self.brains, key=lambda brain: brain.uid)
+        start = query.get("UID", {}).get("query")
+        if start:
+            brains = [brain for brain in brains if brain.uid >= start]
+        return brains
 
 
 class Transaction(object):
@@ -57,15 +92,20 @@ class Transaction(object):
         self.connector.calls.append(("abort", None))
 
 
+def make_brains(count):
+    return [Brain("uid{:02d}".format(num), [Row("r{:02d}".format(num))])
+            for num in range(count)]
+
+
 class ResyncTest(unittest.TestCase):
 
     def setUp(self):
         self.connector = Connector()
-        self.originals = {}
         self.sleeps = []
-        # brains are the objects, every object is a list of rows, and
-        # None stands for an object deleted after the catalog query
-        self.patch("get_object", lambda brain: brain)
+        self.originals = {}
+        self.catalog = Catalog(make_brains(5))
+        self.patch("search", self.catalog.search)
+        self.patch("get_object", lambda brain: brain.rows)
         self.patch("get_rows", lambda obj: obj)
         self.patch("api", API())
         self.patch("transaction", Transaction(self.connector))
@@ -83,47 +123,72 @@ class ResyncTest(unittest.TestCase):
     def calls(self, kind):
         return [name for call, name in self.connector.calls if call == kind]
 
-    def test_writes_all_rows(self):
-        objects = [[Row("a"), Row("b", applies=False)], [Row("c")]]
-        total, rows = resync.resync(objects, self.connector)
-        self.assertEqual((total, rows), (2, 3))
-        self.assertEqual(self.calls("upsert"), ["a", "c"])
-        self.assertEqual(self.calls("delete"), ["b"])
+    def test_batch_starts_after_the_uid(self):
+        result = resync.resync_batch(
+            self.connector, "catalog", {}, after="uid01", size=2)
+        self.assertEqual(self.calls("upsert"), ["r02", "r03"])
+        self.assertEqual(result, {
+            "objects": 2, "rows": 2, "last": "uid03", "done": False})
+        self.assertEqual(self.calls("commit"), [None])
 
-    def test_commits_and_ends_the_transaction_every_batch(self):
-        """An interrupted run keeps the rows of the finished batches,
-        and every batch reads the current state of the ZODB
+    def test_last_batch_is_done(self):
+        result = resync.resync_batch(
+            self.connector, "catalog", {}, after="uid03", size=2)
+        self.assertEqual(self.calls("upsert"), ["r04"])
+        self.assertTrue(result["done"])
+        self.assertEqual(result["last"], "uid04")
+
+    def test_empty_batch_keeps_the_position(self):
+        result = resync.resync_batch(
+            self.connector, "catalog", {}, after="uid04", size=2)
+        self.assertEqual(result, {
+            "objects": 0, "rows": 0, "last": "uid04", "done": True})
+
+    def test_batch_query_is_sorted_and_paged_by_uid(self):
+        query = resync.make_batch_query(
+            {"portal_type": "Analysis"}, "uid07", 200)
+        self.assertEqual(query, {
+            "portal_type": "Analysis", "sort_on": "UID", "sort_limit": 201,
+            "UID": {"query": "uid07", "range": "min"}})
+        self.assertNotIn("UID", resync.make_batch_query({}, None, 200))
+
+    def test_objects_added_during_the_run_do_not_shift_batches(self):
+        """Paging by position would skip an object here
         """
-        objects = [[Row(str(num))] for num in range(5)]
-        resync.resync(objects, self.connector, batch_size=2)
+        resync.resync_batch(self.connector, "catalog", {}, size=2)
+        self.catalog.brains.insert(0, Brain("uid00a", [Row("new")]))
+        result = resync.resync_batch(
+            self.connector, "catalog", {}, after="uid01", size=2)
+        self.assertEqual(self.calls("upsert"), ["r00", "r01", "r02", "r03"])
+        self.assertEqual(result["last"], "uid03")
+
+    def test_resync_ends_the_transaction_every_batch(self):
+        objects, rows = resync.resync(
+            self.connector, "catalog", {}, size=2, pause=0.5)
+        self.assertEqual((objects, rows), (5, 5))
         kinds = [call for call, name in self.connector.calls]
         self.assertEqual(kinds, [
             "upsert", "upsert", "commit", "abort",
             "upsert", "upsert", "commit", "abort",
             "upsert", "commit", "abort",
         ])
-
-    def test_pause_between_batches(self):
-        objects = [[Row(str(num))] for num in range(5)]
-        resync.resync(objects, self.connector, batch_size=2, pause=0.5)
         self.assertEqual(self.sleeps, [0.5, 0.5])
 
-    def test_start_resumes_at_the_position(self):
-        objects = [[Row(str(num))] for num in range(5)]
-        total, rows = resync.resync(objects, self.connector, start=3)
-        self.assertEqual((total, rows), (2, 2))
-        self.assertEqual(self.calls("upsert"), ["3", "4"])
+    def test_resync_resumes_after_the_uid(self):
+        objects, rows = resync.resync(
+            self.connector, "catalog", {}, after="uid02")
+        self.assertEqual(self.calls("upsert"), ["r03", "r04"])
 
     def test_deleted_objects_are_skipped(self):
-        total, rows = resync.resync(
-            [[Row("a")], None, [Row("c")]], self.connector)
-        self.assertEqual((total, rows), (2, 2))
+        self.catalog.brains[1].rows = None
+        self.patch("get_object", lambda brain: brain.rows)
+        objects, rows = resync.resync(self.connector, "catalog", {})
+        self.assertEqual((objects, rows), (4, 4))
 
     def test_failed_rows_are_not_counted(self):
-        self.connector.upsert = lambda row: row.name != "bad"
-        total, rows = resync.resync(
-            [[Row("good")], [Row("bad")]], self.connector)
-        self.assertEqual((total, rows), (2, 1))
+        self.connector.upsert = lambda row: row.name != "r01"
+        objects, rows = resync.resync(self.connector, "catalog", {})
+        self.assertEqual((objects, rows), (5, 4))
 
 
 class ParseArgsTest(unittest.TestCase):
@@ -135,18 +200,18 @@ class ParseArgsTest(unittest.TestCase):
         self.assertIsNone(options.portal_types)
         self.assertEqual(options.batch_size, resync.BATCH_SIZE)
         self.assertEqual(options.pause, 0.0)
-        self.assertEqual(options.start, 0)
+        self.assertIsNone(options.after)
 
-    def test_repeated_portal_types(self):
+    def test_options(self):
         options = resync.parse_args(
             ["-c", "senaite_catalog", "-t", "Analysis",
              "-t", "AnalysisRequest", "-b", "50",
-             "-p", "0.2", "--start", "1000"])
+             "-p", "0.2", "--after", "abc"])
         self.assertEqual(options.portal_types,
                          ["Analysis", "AnalysisRequest"])
         self.assertEqual(options.batch_size, 50)
         self.assertEqual(options.pause, 0.2)
-        self.assertEqual(options.start, 1000)
+        self.assertEqual(options.after, "abc")
 
     def test_query(self):
         self.assertEqual(resync.make_query(None), {})

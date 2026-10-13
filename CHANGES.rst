@@ -14,6 +14,10 @@ Changelog
   `SENAITE_SQLMULTIPLEX_DSN`, registry as fallback
 - Instance command `sqlmultiplex_resync` writes the rows of existing
   objects in batches, safe to run next to live instances
+- Resync batches in UID order (`--after`), `resync_batch` for callers
+  that drive the batches themselves
+- Optional `descriptions` of a row adapter are written as column
+  comments when the columns are created
 
 
 1.0.0 (unreleased)

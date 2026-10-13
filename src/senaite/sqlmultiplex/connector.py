@@ -168,11 +168,26 @@ class PostgreSQLConnector(object):
         if not existing:
             cursor.execute(statements.create_table(
                 row.table, row.primary_key, row.columns))
-            return missing
-        types = dict(row.columns)
-        for table, name in sorted(missing):
-            cursor.execute(statements.add_column(table, name, types[name]))
+        else:
+            self.add_columns(cursor, row, missing)
+        self.comment_columns(cursor, row, missing)
         return missing
+
+    def add_columns(self, cursor, row, columns):
+        """Adds the (table, column) pairs to the existing table
+        """
+        types = dict(row.columns)
+        for table, name in sorted(columns):
+            cursor.execute(statements.add_column(table, name, types[name]))
+
+    def comment_columns(self, cursor, row, columns):
+        """Sets the descriptions of the row as comments of the new columns
+        """
+        descriptions = getattr(row, "descriptions", None) or {}
+        for table, name in sorted(columns):
+            if descriptions.get(name):
+                cursor.execute(statements.comment_column(table, name),
+                               [descriptions[name]])
 
     def upsert(self, row):
         values = row.values()

@@ -48,6 +48,10 @@ class ISQLRow(Interface):
         "Ordered sequence of (column name, SQL type) tuples, including "
         "the primary key column")
 
+    descriptions = Attribute(
+        "Optional dict of column name to description. Written as column "
+        "comment when the column is created")
+
     def applies():
         """Returns whether the object belongs into the table
 
