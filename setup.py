@@ -43,5 +43,7 @@ setup(
       # -*- Entry points: -*-
       [z3c.autoinclude.plugin]
       target = plone
+      [zopectl.command]
+      sqlmultiplex_resync = senaite.sqlmultiplex.resync:main
       """,
 )

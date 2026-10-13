@@ -12,6 +12,8 @@ Changelog
 - Rejected rows are logged and skipped (savepoint per row)
 - Connection string from the environment variable
   `SENAITE_SQLMULTIPLEX_DSN`, registry as fallback
+- Instance command `sqlmultiplex_resync` writes the rows of existing
+  objects in batches, safe to run next to live instances
 
 
 1.0.0 (unreleased)

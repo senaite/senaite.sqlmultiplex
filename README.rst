@@ -110,6 +110,39 @@ Each Zope thread opens one connection. Plan `max_connections` of the
 server accordingly (instances x threads, plus other clients).
 
 
+Resync
+------
+
+Objects are written when they are saved. To fill a new database, or to
+repair rows after a failed commit, write the rows of existing objects
+with the instance command `sqlmultiplex_resync`::
+
+    bin/instance sqlmultiplex_resync -s senaite \
+        -c senaite_catalog_analysis -t Analysis
+
+Options: `-s` site id, `-c` catalog (required), `-t` portal type
+(repeatable), `-b` objects per batch (default 200), `-p` seconds to
+sleep between batches, `--start` position to resume an interrupted
+run.
+
+The resync is safe to run next to live instances:
+
+- It is a separate process (a ZEO client) and uses no request threads
+  of the instances. On a busy server start it with `nice -n 19` and a
+  pause, e.g. `-p 0.5`.
+- It only reads from the ZODB. After every batch it commits the rows
+  and ends the ZODB transaction, so each batch reads the current
+  state: an object changed during the run is not written from an old
+  snapshot.
+- Small batches keep the PostgreSQL row locks short. A live save of
+  the same object waits until the batch is committed at most.
+- An interrupted run keeps the committed batches. The log shows the
+  position, `--start` continues there.
+
+With a FileStorage instead of ZEO the database is locked by the
+running instance; stop it before the resync.
+
+
 MySQL
 -----
 
