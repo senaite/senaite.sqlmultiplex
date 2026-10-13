@@ -92,6 +92,16 @@ def delete(table, primary_key):
         sql.Identifier(table), sql.Identifier(primary_key))
 
 
+def comment_column(table, name):
+    """Returns the statement that sets the comment of a column
+
+    Takes the comment as the only parameter. Most SQL clients and
+    reporting tools show it as description of the field.
+    """
+    return sql.SQL("COMMENT ON COLUMN {}.{} IS %s").format(
+        sql.Identifier(table), sql.Identifier(name))
+
+
 def table_columns():
     """Returns the query for the column names of a table
 

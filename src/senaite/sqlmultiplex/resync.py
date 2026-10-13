@@ -39,8 +39,10 @@ It runs next to live instances without blocking them:
   snapshot.
 - Small batches keep the PostgreSQL row locks short. A live save of
   the same object waits for the end of the batch at most.
-- --pause sleeps between the batches to leave room for the instances,
-  --start resumes an interrupted run at the given position.
+- Batches are taken in UID order, each one after the last UID of the
+  previous batch: objects added or deleted during the run do not shift
+  the batches. --after resumes an interrupted run, --pause sleeps
+  between the batches to leave room for the instances.
 """
 
 import argparse
@@ -73,12 +75,6 @@ def resync_object(connector, obj):
                              for row in get_rows(obj)]))
 
 
-def is_batch_end(num, batch_size):
-    """Returns whether the num-th object closes a batch
-    """
-    return num % batch_size == 0
-
-
 def get_object(brain):
     """Returns the object of the brain, or None if it was deleted after
     the catalog query
@@ -91,41 +87,139 @@ def get_object(brain):
         return None
 
 
-def finish_batch(connector, num, total, pause):
-    """Commits the rows of the batch and starts a fresh ZODB transaction
+def search(catalog_id, query):
+    """Searches the catalog without the permission filter
 
-    Ending the transaction makes the next batch read the current state
-    of the database instead of the snapshot taken at the start.
+    The resync runs as the system user, whose roles are not part of the
+    allowedRolesAndUsers index: a regular search would find nothing.
     """
-    connector.commit()
-    transaction.abort()
-    api.get_portal()._p_jar.cacheGC()
-    logger.info("Resync: {}/{} objects".format(num, total))
-    if pause:
-        time.sleep(pause)
+    catalog = api.get_tool(catalog_id)
+    return catalog.unrestrictedSearchResults(**query)
 
 
-def resync(brains, connector, batch_size=BATCH_SIZE, start=0,
-           pause=PAUSE):
-    """Writes the rows of the objects behind the brains
+def make_batch_query(query, after, size):
+    """Returns the query for the next batch: sorted by UID, starting
+    after the given UID
 
-    Starts at position start (0 based). Commits every batch_size
-    objects, so an interrupted run keeps the rows written so far.
-    Returns the number of objects and the number of rows written.
+    Paging by UID instead of by position keeps a long run correct while
+    objects are added or deleted.
     """
-    total = len(brains)
+    batch_query = dict(query, sort_on="UID", sort_limit=size + 1)
+    if after:
+        batch_query["UID"] = {"query": after, "range": "min"}
+    return batch_query
+
+
+def search_batch(catalog_id, query, after, size):
+    """Returns the brains of the next batch, at most size
+
+    Queries on the portal type only are answered from the UID index
+    directly (see scan_batch). Other queries go through the catalog.
+    """
+    uid_tree = get_uid_tree(catalog_id)
+    if uid_tree is not None and set(query) <= set(["portal_type"]):
+        return scan_batch(catalog_id, uid_tree, query.get("portal_type"),
+                          after, size)
+    brains = search(catalog_id, make_batch_query(query, after, size))
+    brains = [brain for brain in brains[:size + 1]
+              if api.get_uid(brain) != after]
+    return brains[:size]
+
+
+def get_uid_tree(catalog_id):
+    """Returns the tree of the UID index (UID to record id), or None
+
+    A range query "UID after X" collects and sorts every later record
+    for each batch, about half a second per batch on 365,000 objects.
+    Walking the sorted tree of the index from X on costs only the size
+    of the batch.
+    """
+    catalog = api.get_tool(catalog_id)._catalog
+    index = catalog.indexes.get("UID")
+    return getattr(index, "_index", None)
+
+
+def to_portal_types(portal_type):
+    """Returns the portal types of the query as set, empty for all
+    """
+    if not portal_type:
+        return set()
+    if isinstance(portal_type, basestring):
+        return set([portal_type])
+    return set(portal_type)
+
+
+def scan_batch(catalog_id, uid_tree, portal_type, after, size):
+    """Returns the next brains in UID order, read from the UID index
+    """
+    catalog = api.get_tool(catalog_id)._catalog
+    portal_types = to_portal_types(portal_type)
+    if after:
+        uids = uid_tree.keys(min=after, excludemin=True)
+    else:
+        uids = uid_tree.keys()
+    brains = []
+    for uid in uids:
+        brain = catalog[uid_tree[uid]]
+        if portal_types and brain.portal_type not in portal_types:
+            continue
+        brains.append(brain)
+        if len(brains) == size:
+            break
+    return brains
+
+
+def resync_batch(connector, catalog_id, query, after=None,
+                 size=BATCH_SIZE):
+    """Writes the rows of the next batch and commits them
+
+    Returns a dict with the number of objects and rows written, the UID
+    to continue after, and whether the last batch was reached. The ZODB
+    transaction is left to the caller: the command ends it after every
+    batch, a web request ends it with the request.
+    """
+    brains = search_batch(catalog_id, query, after, size)
     objects = 0
     rows = 0
-    for num, brain in enumerate(brains[start:], start + 1):
+    for brain in brains:
         obj = get_object(brain)
-        if obj is not None:
-            objects += 1
-            rows += resync_object(connector, obj)
-        if is_batch_end(num, batch_size):
-            finish_batch(connector, num, total, pause)
+        if obj is None:
+            continue
+        objects += 1
+        rows += resync_object(connector, obj)
     connector.commit()
-    transaction.abort()
-    return objects, rows
+    api.get_portal()._p_jar.cacheGC()
+    return {
+        "objects": objects,
+        "rows": rows,
+        "last": api.get_uid(brains[-1]) if brains else after,
+        "done": len(brains) < size,
+    }
+
+
+def resync(connector, catalog_id, query, after=None, size=BATCH_SIZE,
+           pause=PAUSE):
+    """Writes the rows of all objects of the query, batch by batch
+
+    Commits the rows and ends the ZODB transaction after every batch,
+    so the next batch reads the current state of the database. Returns
+    the number of objects and rows written.
+    """
+    total = len(search(catalog_id, query))
+    objects = 0
+    rows = 0
+    while True:
+        result = resync_batch(connector, catalog_id, query, after, size)
+        transaction.abort()
+        objects += result["objects"]
+        rows += result["rows"]
+        after = result["last"]
+        logger.info("Resync: {}/{} objects, continue with --after {}"
+                    .format(objects, total, after))
+        if result["done"]:
+            return objects, rows
+        if pause:
+            time.sleep(pause)
 
 
 def parse_args(args):
@@ -150,8 +244,9 @@ def parse_args(args):
         "-p", "--pause", type=float, default=PAUSE,
         help="seconds to sleep between batches (default: no pause)")
     parser.add_argument(
-        "--start", type=int, default=0,
-        help="position to start at, to resume an interrupted run")
+        "--after", default=None,
+        help="UID to continue after, to resume an interrupted run "
+             "(printed with the progress)")
     return parser.parse_args(args)
 
 
@@ -163,16 +258,6 @@ def setup_site(app, site_id):
     setSite(site)
     newSecurityManager(None, system)
     return site
-
-
-def search(catalog_id, query):
-    """Searches the catalog without the permission filter
-
-    The resync runs as the system user, whose roles are not part of the
-    allowedRolesAndUsers index: a regular search would find nothing.
-    """
-    catalog = api.get_tool(catalog_id)
-    return catalog.unrestrictedSearchResults(**query)
 
 
 def make_query(portal_types):
@@ -205,9 +290,7 @@ def main(app, args):
     if connector is None:
         raise SystemExit("No SQL connection, check the DSN")
     query = make_query(options.portal_types)
-    brains = search(options.catalog, query)
-    logger.info("Resync: {} objects in {}".format(
-        len(brains), options.catalog))
-    objects, rows = resync(brains, connector, options.batch_size,
-                           options.start, options.pause)
+    objects, rows = resync(connector, options.catalog, query,
+                           options.after, options.batch_size,
+                           options.pause)
     logger.info("Resync done: {} objects, {} rows".format(objects, rows))

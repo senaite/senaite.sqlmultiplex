@@ -233,6 +233,27 @@ class PostgreSQLConnectorTest(unittest.TestCase):
                        .format(TABLE)),
             [("u1", None), ("u2", "extra")])
 
+    def test_descriptions_become_column_comments(self):
+        """Reporting tools show column comments as field descriptions
+        """
+        Row.descriptions = {"title": "Title of the object"}
+        WideRow.descriptions = {"extra": "Added later"}
+        try:
+            self.connector.upsert(Row({"uid": "u1"}))
+            self.connector.commit()
+            self.connector.upsert(WideRow({"uid": "u2"}))
+            self.connector.commit()
+        finally:
+            del Row.descriptions
+            del WideRow.descriptions
+        self.assertEqual(self.query(
+            "SELECT attname, col_description(attrelid, attnum) "
+            "FROM pg_attribute WHERE attrelid = '{}'::regclass "
+            "AND attname IN ('uid', 'title', 'extra') ORDER BY attname"
+            .format(TABLE)),
+            [("extra", "Added later"), ("title", "Title of the object"),
+             ("uid", None)])
+
     def test_delete(self):
         self.connector.upsert(Row({"uid": "u1"}))
         self.connector.upsert(Row({"uid": "u2"}))

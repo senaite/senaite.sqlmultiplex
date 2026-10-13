@@ -90,6 +90,10 @@ Register it for the content interface::
 Several named adapters for the same object write into several tables.
 Values of `json`/`jsonb` columns may be dicts or lists.
 
+An optional `descriptions` dict (column name to text) is written as
+column comment when a column is created. Reporting tools such as
+Metabase show it as field description.
+
 
 Configuration
 -------------
@@ -122,8 +126,7 @@ with the instance command `sqlmultiplex_resync`::
 
 Options: `-s` site id, `-c` catalog (required), `-t` portal type
 (repeatable), `-b` objects per batch (default 200), `-p` seconds to
-sleep between batches, `--start` position to resume an interrupted
-run.
+sleep between batches, `--after` UID to resume an interrupted run.
 
 The resync is safe to run next to live instances:
 
@@ -136,8 +139,15 @@ The resync is safe to run next to live instances:
   snapshot.
 - Small batches keep the PostgreSQL row locks short. A live save of
   the same object waits until the batch is committed at most.
+- Batches are taken in UID order, each one after the last UID of the
+  previous batch. Objects added or deleted during the run do not shift
+  the batches (new objects are written by the multiplexer anyway).
 - An interrupted run keeps the committed batches. The log shows the
-  position, `--start` continues there.
+  UID to continue with, `--after` resumes there.
+
+Other add-ons can run the resync batch by batch themselves, e.g. from
+a view that a browser calls repeatedly: `resync.resync_batch` writes
+and commits one batch and returns the UID to continue after.
 
 With a FileStorage instead of ZEO the database is locked by the
 running instance; stop it before the resync.
