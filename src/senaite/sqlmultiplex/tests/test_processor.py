@@ -37,6 +37,14 @@ class Row(object):
         return self._applies
 
 
+class BrokenRow(Row):
+    """Adapter that fails on reading the object, e.g. bad data
+    """
+
+    def applies(self):
+        raise ValueError("Value 'x' is not floatable")
+
+
 class Connector(object):
     """Records the calls of the processor
     """
@@ -110,6 +118,19 @@ class SQLMultiplexProcessorTest(unittest.TestCase):
         self.processor.commit()
         self.processor.abort()
         self.assertEqual(self.connector.calls, [])
+
+    def test_adapter_errors_skip_only_that_row(self):
+        """A failing adapter must not stop SENAITE from saving, and must
+        not keep the other rows from being written
+        """
+        self.rows = [BrokenRow("bad"), Row("good")]
+        self.processor.index(object())
+        self.processor.unindex(object())
+        self.assertEqual(self.connector.calls, [
+            ("upsert", "good"), ("delete", "bad"), ("delete", "good")])
+
+    def test_write_returns_false_for_a_broken_row(self):
+        self.assertFalse(processor.write(self.connector, BrokenRow("bad")))
 
     def test_no_connection_does_nothing(self):
         self.patch("get_connector", lambda: None)
